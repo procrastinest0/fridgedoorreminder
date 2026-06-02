@@ -3,7 +3,7 @@
 ## What you need
 
 - Raspberry Pi Pico W (with headers soldered on)
-- Waveshare Pico-ePaper-2.9 (V4) — the one designed to plug into the Pico
+- Waveshare 2.13" e-Paper HAT (B) V4 — BWR (Black/White/Red), 250×122
 - A USB cable for flashing
 
 ## One-time Pico setup
@@ -29,30 +29,37 @@ on the command line — `pip install mpremote` then `mpremote cp file.py :file.p
 - `boot.py` — runs at boot, connects Wi-Fi, syncs time via NTP
 - `main.py` — the widget loop
 - `secrets.py` — Wi-Fi + server URL + token (copy from `secrets_example.py`)
-- `epaper2in9.py` — Waveshare display driver
+- `epaper2in13bwr.py` — display driver (included in this repo)
+- `renderer.py` — dashboard layout and drawing logic
 
-### 4. Get the e-ink driver
+### 4. Wiring / pin connections
 
-Download `Pico_ePaper-2.9.py` from Waveshare's wiki:
-https://www.waveshare.com/wiki/Pico-ePaper-2.9
+The driver uses SPI1 with the standard Waveshare Pico e-Paper pin mapping:
 
-Rename to `epaper2in9.py` and copy to the Pico. (We import it as that name.)
+| Signal | GPIO |
+|--------|------|
+| DC     | 8    |
+| CS     | 9    |
+| CLK    | 10   |
+| DIN    | 11   |
+| RST    | 12   |
+| BUSY   | 13   |
 
-### 5. Plug the e-ink onto the Pico
+If you're using a Waveshare Pico e-Paper HAT, just plug the Pico into the
+header — no manual wiring needed.
 
-The Waveshare 2.9" Pico-ePaper has the Pico's pin header on the back. Just
-press the Pico into it. No wiring.
-
-### 6. First boot
+### 5. First boot
 
 After copying files: in Thonny, Run `main.py`. Watch the REPL output. First
 boot will fail until `secrets.py` is filled in — that's expected.
 
-## Layout reference (296×128)
+## Layout reference (250×122)
 
-The display module's framebuffer uses 8×8 built-in font. Each char is 8 px
-wide, 8 px tall. So:
-- 296/8 = **37 chars per line max**
-- 128/8 = **16 lines tall**
+The display's framebuffer uses 8×8 built-in font. Each char is 8 px wide,
+8 px tall. So:
+- 250/8 = **31 chars per line max**
+- 122/8 = **15 lines tall**
 
-We use 2 px padding so usable area is more like 36 chars × 14 rows.
+We use 2 px padding so usable area is more like 30 chars × 13 rows.
+
+Red is used for: divider lines, the next-event marker, and overdue reminders.

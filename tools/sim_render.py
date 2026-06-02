@@ -1,16 +1,16 @@
 """
-sim_render.py — Local simulator of what the Pico will draw.
+sim_render.py — Local simulator of what the Pico will draw on the 2.13" BWR display.
 
-Not deployed anywhere. Run on your laptop with Pillow installed to preview
-the layout before flashing the Pico:
+Run on your laptop with Pillow installed to preview the layout:
 
     cd server
     python -m flask --app src.app run --port 8000 &
     cd ../tools
     python sim_render.py
 
-Generates `sim_preview.png` matching the actual 296x128 panel dimensions
+Generates `sim_preview.png` matching the actual 250x122 panel dimensions
 and 8x8 monospace font that the MicroPython framebuf uses.
+Red pixels are rendered in red to simulate the BWR panel.
 """
 
 import json
@@ -20,19 +20,19 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-WIDTH, HEIGHT = 296, 128
-SCALE = 3  # upscale for visibility
+WIDTH, HEIGHT = 250, 122
+SCALE = 3
+MAX_CHARS = (WIDTH - 4) // 8  # 30
+
+COLOR_WHITE = (255, 255, 255)
+COLOR_BLACK = (0, 0, 0)
+COLOR_RED = (200, 0, 0)
 
 
 def fetch_dry_data():
-    """Fetch the dry-run JSON from a locally running server."""
     with urllib.request.urlopen("http://localhost:8000/widget.json?dry=1") as r:
         return json.loads(r.read())
 
-
-# We mimic MicroPython's framebuf 8x8 font using a real monospace TTF
-# at size 8. Pillow doesn't ship the exact same font, but the *cell size*
-# is what matters for layout — 8 px wide × 8 px tall.
 
 def _find_mono_font():
     candidates = [
@@ -46,27 +46,28 @@ def _find_mono_font():
     return ImageFont.load_default()
 
 
+def truncate(s, max_chars):
+    if len(s) <= max_chars:
+        return s
+    return s[:max_chars - 2] + ".."
+
+
 def render_sim(data):
-    img = Image.new("1", (WIDTH, HEIGHT), 1)  # 1 = white
+    img = Image.new("RGB", (WIDTH, HEIGHT), COLOR_WHITE)
     draw = ImageDraw.Draw(img)
     font = _find_mono_font()
 
     PAD = 2
     LINE_H = 10
 
-    def text(s, x, y):
-        draw.text((x, y - 1), s, font=font, fill=0)
+    def text(s, x, y, color=COLOR_BLACK):
+        draw.text((x, y - 1), s, font=font, fill=color)
 
-    def hline(x, y, w):
-        draw.line([(x, y), (x + w - 1, y)], fill=0, width=1)
+    def hline(x, y, w, color=COLOR_BLACK):
+        draw.line([(x, y), (x + w - 1, y)], fill=color, width=1)
 
-    def rect(x, y, w, h):
-        draw.rectangle([(x, y), (x + w - 1, y + h - 1)], outline=0, width=1)
-
-    def truncate(s, max_chars):
-        if len(s) <= max_chars:
-            return s
-        return s[:max_chars - 2] + ".."
+    def rect(x, y, w, h, color=COLOR_BLACK):
+        draw.rectangle([(x, y), (x + w - 1, y + h - 1)], outline=color, width=1)
 
     # Header
     y = PAD
@@ -74,7 +75,7 @@ def render_sim(data):
     time_str = data.get("now_time", "")
     text(time_str, WIDTH - PAD - len(time_str) * 8, y)
     y += LINE_H
-    hline(PAD, y + 1, WIDTH - 2 * PAD)
+    hline(PAD, y + 1, WIDTH - 2 * PAD, COLOR_RED)
     y += 4
 
     # Events
@@ -86,21 +87,27 @@ def render_sim(data):
         for i, ev in enumerate(events[:3]):
             if y > HEIGHT - LINE_H * 4:
                 break
-            prefix = "> " if i == 0 else "  "
             day = ev.get("day", "")
             t = ev.get("time", "")
             title = ev.get("title", "")
-            if i == 0 and day == "Today":
-                head = f"{prefix}{t}  "
+            if i == 0:
+                text(">", PAD, y, COLOR_RED)
+                if day == "Today":
+                    head = f"  {t}  "
+                else:
+                    head = f"  {day} {t}  "
             else:
-                head = f"{prefix}{day} {t}  "
-            available = 37 - len(head)
+                if day == "Today":
+                    head = f"  {t}  "
+                else:
+                    head = f"  {day} {t}  "
+            available = MAX_CHARS - len(head)
             line = head + truncate(title, max(0, available))
             text(line, PAD, y)
             y += LINE_H
 
     if y < HEIGHT - LINE_H * 2:
-        hline(PAD, y + 1, WIDTH - 2 * PAD)
+        hline(PAD, y + 1, WIDTH - 2 * PAD, COLOR_RED)
         y += 4
 
     # Reminders
@@ -117,10 +124,12 @@ def render_sim(data):
             ry = y + row * LINE_H
             if ry > HEIGHT - LINE_H:
                 break
-            rect(x, ry + 1, 6, 6)
             title = r.get("title", "")
             due = r.get("due", "")
-            if due == "overdue":
+            overdue = due == "overdue"
+            color = COLOR_RED if overdue else COLOR_BLACK
+            rect(x, ry + 1, 6, 6, color)
+            if overdue:
                 title = "! " + title
                 suffix = ""
             elif due == "today":
@@ -133,16 +142,14 @@ def render_sim(data):
                 suffix = ""
             label_max = max_chars_per_col - len(suffix)
             label = truncate(title, max(1, label_max)) + suffix
-            text(label, x + 10, ry)
+            text(label, x + 10, ry, color)
 
-    # Upscale for visibility
     img = img.resize((WIDTH * SCALE, HEIGHT * SCALE), Image.NEAREST)
     return img
 
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--inline":
-        # Use inline fake data instead of hitting server
         from datetime import datetime
         data = {
             "now": datetime.now().strftime("%a %d %b"),

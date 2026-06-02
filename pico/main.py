@@ -18,12 +18,7 @@ import urequests as requests
 import secrets
 import renderer
 
-# Import the Waveshare driver. The exact class name depends on the file
-# you downloaded — check the bottom of Waveshare's Pico_ePaper-2.9.py
-# for the example. The 2.9" V4 driver typically exposes:
-#   EPD_2in9_Landscape  — for 296x128 landscape
-# If your driver uses a different name, change this line.
-from epaper2in9 import EPD_2in9_Landscape as EPD
+from epaper2in13bwr import EPD_2in13_BWR_Landscape as EPD
 
 
 def fetch_data():

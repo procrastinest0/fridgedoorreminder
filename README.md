@@ -12,7 +12,8 @@ A calendar/reminders dashboard with two parts:
    Android phone. Fetches Google Calendar + Apple Reminders, exposes
    `/widget.json` to the Pico over your home Wi-Fi.
 2. **`pico/`** — MicroPython code for a Raspberry Pi Pico W + Waveshare
-   Pico-ePaper-2.9. Wakes every 15 min, fetches the JSON, draws it.
+   2.13" BWR (Black/White/Red) e-ink display. Wakes every 15 min,
+   fetches the JSON, draws it. Overdue items and dividers render in red.
 
 ## Why Termux on Android
 
@@ -29,7 +30,7 @@ A calendar/reminders dashboard with two parts:
 3. Set up auto-start so server survives phone reboots.
 4. Reserve the phone's local IP in your router (so it doesn't change).
 5. Flash MicroPython on the Pico, copy code, set Wi-Fi + URL.
-6. Plug e-ink onto Pico, mount on wall.
+6. Connect Waveshare 2.13" BWR display to Pico, mount on wall.
 
 ## Reminder symbols (constraint: 8x8 ASCII font)
 
@@ -45,17 +46,17 @@ A calendar/reminders dashboard with two parts:
 
 ![e-ink display preview](docs/preview.png)
 
-## Layout (296×128, landscape)
+## Layout (250×122, landscape, BWR)
 
 ```
-┌───────────────────────────────────────────────────────────┐
-│ Wed 06 May                14:32                            │
-├───────────────────────────────────────────────────────────┤
-│ > 16:00  Standup                                           │
-│   Tomorrow ALL DAY  Mom's birthday                         │
-│   Fri 10:00  Dentist                                       │
-├───────────────────────────────────────────────────────────┤
-│ ☐ Buy groceries *      ☐ ! Call dentist                    │
-│ ☐ Reply to Sam         ☐ Renew passport                    │
-└───────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│ Wed 06 May              14:32                    │
+├═════════════════════════════════════════════════╡  ← red line
+│ > 16:00  Standup            (">" marker in red)  │
+│   Tomorrow ALL DAY  Mom's birthday               │
+│   Fri 10:00  Dentist                             │
+├═════════════════════════════════════════════════╡  ← red line
+│ ☐ Buy groceries *    ☐ ! Call dentist (in red)   │
+│ ☐ Reply to Sam       ☐ Renew passport            │
+└─────────────────────────────────────────────────┘
 ```
